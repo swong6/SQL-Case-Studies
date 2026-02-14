@@ -72,14 +72,16 @@ where ranking = 1
 -- CTE: all purchases after join_date
 -- outer: select purchase_name where ranking = 1
 with cte as (
-select	*,
+select	s.customer_id,
+  		s.product_id,
+  		m1.product_name,
 		rank() over (partition by s.customer_id order by s.order_date asc) as ranking
 from sales s 
 inner join menu m1 
 on s.product_id = m1.product_id
 inner join members m2
 on m2.customer_id = s.customer_id
-where order_date > join_date
+where s.order_date > m2.join_date
 )
 
 select	customer_id,
