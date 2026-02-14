@@ -22,9 +22,8 @@ FROM customer_orders;
 SELECT * FROM customer_orders_temp;
  
  -- (2) Temp Table - runner_orders 
--- nulls (pickup_time, distance, duration, cancellation): replaced with ' '
--- distance: replace 'km' with ' '
--- duration: replace 'minutes', 'min' with ' '
+-- nulls (pickup_time, distance, duration, cancellation)
+
 DROP TABLE IF EXISTS runner_orders_temp;
 
 CREATE TEMPORARY TABLE runner_orders_temp AS
@@ -70,11 +69,27 @@ from customer_orders_temp
 select	runner_id,
 		count(*) as successful_count
 from runner_orders_temp 
-where cancellation = ' '
+where cancellation is null
 group by runner_id
 ;
 
 -- How many of each type of pizza was delivered?
+
+-- join customer_orders_temp, runner_orders_temp, pizza_names
+-- output -- pizza_name | count
+
+select 	c.pizza_id,
+		p.pizza_name, 
+		count(c.pizza_id) as pizza_count
+from customer_orders_temp c 
+inner join runner_orders_temp r 
+on c.order_id = r.order_id
+inner join pizza_names p 
+on c.pizza_id = p.pizza_id
+where cancellation is null
+group by c.pizza_id, p.pizza_name
+;
+
 -- How many Vegetarian and Meatlovers were ordered by each customer?
 -- What was the maximum number of pizzas delivered in a single order?
 -- For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
