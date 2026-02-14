@@ -2,12 +2,6 @@
    Case Study Questions
    --------------------*/
 -- 1. What is the total amount each customer spent at the restaurant?
-
--- (1) product_id * price = purchase amount
--- (2) inner join sales with menu 
--- (3) sum(purchase amounts)
--- output -- customer_id | spend_amount
-
 select customer_id, 
 		sum(s.product_id * m.price) as spend_amount
 from sales s 
@@ -19,10 +13,6 @@ order by customer_id
 
 
 -- 2. How many days has each customer visited the restaurant?
-
--- (1) visit_count = count(order_date)
--- output -- customer_id | visit_count
-
 select	customer_id, 
 		count(order_date) as visit_count
 from sales
@@ -31,10 +21,6 @@ order by customer_id
 ;
 
 -- 3. What was the first item from the menu purchased by each customer?
-
--- rank() over (partition by customer_id order by order_date asc)
--- output -- customer_id | first_product
-
 with cte as (
 select *,
 		row_number() over (partition by customer_id order by order_date asc) as ranking
@@ -47,13 +33,61 @@ select	customer_id,
 from cte
 where ranking = 1
 order by customer_id
+;
 
 -- 4. What is the most purchased item on the menu and how many times was it purchased by all customers?
-
-
-
+select	product_name,
+		count(*) as purchase_count
+from sales s 
+inner join menu m 
+on s.product_id = m.product_id
+group by product_name
+order by purchase_count desc
+limit 1 
+;
 -- 5. Which item was the most popular for each customer?
+with cte as (
+select	customer_id,
+		product_name,
+  		rank() over (partition by customer_id order by count(*) desc) as ranking 
+from sales s 
+inner join menu m 
+on s.product_id = m.product_id
+group by 1,2
+ )
+ 
+select	customer_id,
+ 		product_name
+from cte
+where ranking = 1 
+
+;
 -- 6. Which item was purchased first by the customer after they became a member?
+
+-- first purchase = purchase after join_date
+-- (1) sales join menu join members
+-- (2) where order_date > join_date
+-- (3) and ranking = 1
+
+-- CTE: all purchases after join_date
+-- outer: select purchase_name where ranking = 1
+with cte as (
+select	*,
+		rank() over (partition by s.customer_id order by s.order_date asc) as ranking
+from sales s 
+inner join menu m1 
+on s.product_id = m1.product_id
+inner join members m2
+on m2.customer_id = s.customer_id
+where order_date > join_date
+)
+
+select	customer_id,
+		product_name
+from cte
+where ranking = 1 
+;
+
 -- 7. Which item was purchased just before the customer became a member?
 -- 8. What is the total items and amount spent for each member before they became a member?
 -- 9.  If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
