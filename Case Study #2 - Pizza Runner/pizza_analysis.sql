@@ -91,6 +91,19 @@ group by c.pizza_id, p.pizza_name
 ;
 
 -- How many Vegetarian and Meatlovers were ordered by each customer?
+
+-- output -- pizza name | order_count
+
+select 	c.customer_id,
+		p.pizza_name, 
+		count(c.pizza_id) as pizza_count
+from customer_orders_temp c 
+inner join pizza_names p 
+on c.pizza_id = p.pizza_id
+group by c.customer_id, p.pizza_name
+order by c.customer_id
+;
+
 -- What was the maximum number of pizzas delivered in a single order?
 -- For each customer, how many delivered pizzas had at least 1 change and how many had no changes?
 -- How many pizzas were delivered that had both exclusions and extras?
