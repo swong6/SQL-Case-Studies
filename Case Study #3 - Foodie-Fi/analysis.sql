@@ -19,3 +19,65 @@ where customer_id in (1,2,11,13,15,16,18,19)
 
 -- Customer 15 Observations -- 
 -- Started with free trial, upgraded to pro monthly then unsubbed on April 29th.
+
+-- B. Data Analysis Questions
+-- How many customers has Foodie-Fi ever had?
+
+select count(distinct customer_id) as customer_ct
+from subscriptions
+;
+
+-- What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+
+-- output -- month | count(start_date)
+-- where plan_id = trial
+
+select month(start_date) as start_date_month, 
+		count(distinct customer_id) as ct
+from subscriptions s 
+inner join plans p 
+on s.plan_id = p.plan_id
+where s.plan_id = 0
+group by start_date_month
+order by start_date_month
+;
+
+
+-- What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+
+-- output -- year_start_date | plan_name | ct
+-- where year > 2020
+
+select	plan_id,
+		plan_name,
+        count(*) as ct
+from subscriptions s 
+inner join plans p 
+using (plan_id)
+where year(start_date) > 2020
+group by plan_id, plan_name
+order by plan_id, plan_name
+;
+
+-- What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+
+-- output -- plan_name | customer_ct | churn_percentage
+
+select	plan_name,
+        count(*) as customer_ct,
+        round(100*count(distinct customer_id)/
+        (select count(distinct customer_id) from subscriptions),2) 
+from subscriptions s 
+inner join plans p 
+using (plan_id)
+where plan_name = 'churn'
+;
+
+
+-- How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+-- What is the number and percentage of customer plans after their initial free trial?
+-- What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+-- How many customers have upgraded to an annual plan in 2020?
+-- How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+-- Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+-- How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
