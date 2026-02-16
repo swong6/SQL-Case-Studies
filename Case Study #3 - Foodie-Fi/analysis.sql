@@ -73,11 +73,80 @@ using (plan_id)
 where plan_name = 'churn'
 ;
 
-
 -- How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+
+-- output -- churn_ct | churn_percentage
+-- churn_ct = where plan_id = 4 and prev_plan = 0
+-- row_number() over (partition by customer_id order by start_date) as ranking
+with cte as (
+select	customer_id,
+		plan_id,
+        start_date,
+		lead(plan_id) over (partition by customer_id order by start_date) as next_plan,
+		rank() over (partition by customer_id order by start_date) as ranking
+from subscriptions s 
+inner join plans p 
+using (plan_id)
+)
+
+select	plan_id,
+		count(*) as churner_ct,
+        round(100*count(*)/
+        (select count(distinct customer_id) from subscriptions),2) as churner_percentage
+from cte
+where plan_id = 0
+	and next_plan = 4
+    and ranking = 1
+group by plan_id
+;
 -- What is the number and percentage of customer plans after their initial free trial?
+
+with  cte as (
+select	customer_id,
+		plan_id,
+        start_date,
+		lag(plan_id) over (partition by customer_id order by start_date) as prev_plan
+from subscriptions s 
+inner join plans p 
+using (plan_id)
+  )
+select	plan_id,
+		count(*) as retention_ct,
+        round(100*count(*)/
+        (select count(distinct customer_id) from subscriptions), 2) as retention_percentage
+from cte
+where prev_plan = 0
+group by plan_id
+order by plan_id
+;
 -- What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+
+-- output -- plan_name | customer_ct | percentage
+-- where startdate <= '2020-12-31'
+with cte as (
+select *,
+		row_number() over (partition by customer_id order by start_date desc) as latest_plan
+from subscriptions
+join plans using (plan_id)
+where start_date <= '2020-12-31'
+)
+
+select	plan_id,
+		plan_name,
+		count(customer_id) as customer_ct,
+        round(100*count(*)/
+        (select count(distinct customer_id) from subscriptions),2) as percentage
+from cte
+where latest_plan = 1 
+group by plan_id,plan_name
+order by plan_id,plan_name
+;
+
+
 -- How many customers have upgraded to an annual plan in 2020?
+
+-- upgrade = 
+
 -- How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
 -- Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
 -- How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
