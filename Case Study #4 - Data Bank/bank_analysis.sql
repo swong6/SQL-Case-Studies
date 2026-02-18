@@ -1,9 +1,70 @@
 -- A. Customer Nodes Exploration
 -- How many unique nodes are there on the Data Bank system?
--- What is the number of nodes per region?
+
+select count(distinct node_id)
+from customer_nodes
+;
+
+-- What is the number of nodes per region?   
+-- output -- region_id | node_ct
+
+select region_id,
+		count(node_id) as region_ct
+from customer_nodes
+group by region_id
+order by region_id
+;
+
 -- How many customers are allocated to each region?
+
+-- output -- region_id | customer_ct
+-- customer_ct = count(distinct customer_id)
+
+select	region_id,
+		count(distinct customer_id) as customer_ct
+from customer_nodes
+group by region_id
+order by region_id
+;
+
 -- How many days on average are customers reallocated to a different node?
+-- reallocation days = avg(end_date - start_date)
+-- output -- node | avg(days)
+
+select	round(AVG(DATEDIFF(end_date, start_date)),2) AS difference
+from customer_nodes
+where end_date != '9999-12-31'
+;
+
 -- What is the median, 80th and 95th percentile for this same reallocation days metric for each region?
+
+-- output -- region_id | median(difference) | 80th(difference) | 95th(difference)
+
+WITH base AS (
+  SELECT
+    cn.region_id,
+    r.region_name,
+    DATEDIFF(cn.end_date, cn.start_date) AS difference
+  FROM customer_nodes cn
+  JOIN regions r USING (region_id)
+  WHERE cn.end_date <> '9999-12-31'
+),
+ranked AS (
+  SELECT
+    *,
+    CUME_DIST() OVER (PARTITION BY region_id ORDER BY difference) AS cd
+  FROM base
+)
+SELECT
+  region_id,
+  region_name,
+  MIN(difference) AS p95_cutoff
+FROM ranked
+WHERE cd >= 0.95
+GROUP BY region_id, region_name
+ORDER BY region_id;
+
+
 -- B. Customer Transactions
 -- What is the unique count and total amount for each transaction type?
 -- What is the average total historical deposit counts and amounts for all customers?
