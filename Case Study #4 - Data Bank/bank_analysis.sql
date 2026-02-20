@@ -129,7 +129,74 @@ order by monthly
 ;
 
 -- What is the closing balance for each customer at the end of the month?
+
+-- output -- customer_id | end_of_month | closing_balance
+-- beginning_of_month = date_format(txn_date, '%Y-%m-01')
+-- net_change = (deposit - purchase - withdrawal)
+-- cumulative net change = sum(net) over (partition by customer_id order by beginning_of_month) as cumulative_net
+
+-- cte -- customer_id, sum(deposit, purchase, withdrawals), beginning_of_month, net change
+-- outer -- customer_id, month, cumulative_net as closing_balance
+with cte as (
+select	customer_id,
+		date_format(txn_date, '%Y-%m-01') as month,
+        sum(case 
+            	when txn_type = 'deposit' then +txn_amount
+                when txn_type = 'purchase' then -txn_amount
+                when txn_type = 'withdrawal' then -txn_amount
+           end) as net_change
+from customer_transactions
+group by customer_id, month
+  )
+
+select	customer_id,
+		month,
+        net_change,
+        sum(net_change) over (partition by customer_id order by month) as closing_balance
+from cte
+;
+
 -- What is the percentage of customers who increase their closing balance by more than 5%?
+
+-- MoM increase > 5%
+-- current closing_balance/ previous > 1.05
+-- previous = lag(closing_balance) over (partition by customer_id, order by month)
+
+with cte as (
+select	customer_id,
+		date_format(txn_date, '%Y-%m-01') as month,
+        sum(case 
+            	when txn_type = 'deposit' then +txn_amount
+                when txn_type = 'purchase' then -txn_amount
+                when txn_type = 'withdrawal' then -txn_amount
+           end) as net_change
+from customer_transactions
+group by customer_id, month
+  ), 
+closing_cte as (
+
+select	customer_id,
+		month,
+        net_change,
+        sum(net_change) over (partition by customer_id order by month) as closing_balance
+from cte
+  ), 
+cte3 as (
+select	customer_id,
+		month,
+        net_change,
+        lag(closing_balance) over (partition by customer_id order by month) as prev_balance,
+        closing_balance
+from closing_cte
+ )
+
+select	count(distinct customer_id)*100/
+        (select count(distinct customer_id) from customer_transactions) as qualify_pct
+from cte3
+where prev_balance > 0
+		and (closing_balance/prev_balance) > 1.05
+;
+
 
 -- C. Data Allocation Challenge
 -- To test out a few different hypotheses - the Data Bank team wants to run an experiment where different groups of customers would be allocated data using 3 different options:
