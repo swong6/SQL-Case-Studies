@@ -67,10 +67,70 @@ ORDER BY region_id;
 
 -- B. Customer Transactions
 -- What is the unique count and total amount for each transaction type?
+
+-- output -- txn_type | ct | total_amount
+-- ct = count(txn_type)
+-- total_amount = sum(txn_amount)
+
+select	txn_type,
+		count(txn_type) as ct,
+        sum(txn_amount) as total_amount
+from customer_transactions
+group by txn_type
+;
+
 -- What is the average total historical deposit counts and amounts for all customers?
+
+-- output -- customer_id | deposit_ct | deposit_amt
+-- deposit_ct = count(*)
+-- deposit_amt = sum(txn_amount)
+-- where txn_type = deposit
+
+with cte as (
+select	customer_id,
+		count(customer_id) as deposit_ct,
+		sum(txn_amount) as deposit_amt
+from customer_transactions
+where txn_type = 'deposit'
+group by customer_id
+)
+select	round(avg(deposit_ct),2) as avg_ct,
+		round(avg(deposit_amt),2) as avg_amt
+from cte
+;     
+
 -- For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?
+
+-- output -- month | ct(deposit more than one) | ct(1 purchse or 1 withdrawal)
+
+-- cte (cts of each txn_type)
+-- outer -- month | cts 
+-- where conditions
+-- group by month
+
+with cte as (
+select	customer_id,
+		date_format(txn_date, '%Y-%m-01') as monthly,
+        sum(txn_type = 'deposit') as deposit_ct,
+        sum(txn_type = 'purchase') as purchase_ct,
+        sum(txn_type = 'withdrawal') as withdrawal_ct
+from customer_transactions
+group by customer_id, monthly
+
+  )
+  
+select	monthly,
+		count(*) as customer_ct
+from cte
+where deposit_ct > 1
+		and (purchase_ct >= 1 or withdrawal_ct >= 1)
+group by monthly
+order by monthly
+;
+
 -- What is the closing balance for each customer at the end of the month?
 -- What is the percentage of customers who increase their closing balance by more than 5%?
+
 -- C. Data Allocation Challenge
 -- To test out a few different hypotheses - the Data Bank team wants to run an experiment where different groups of customers would be allocated data using 3 different options:
 
