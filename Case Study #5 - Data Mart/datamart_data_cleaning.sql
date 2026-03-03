@@ -23,6 +23,8 @@ SELECT
 FROM data_mart.weekly_sales
 );
 
+select * from clean_weekly_sales limit 5;
+
 -- 2. Data Exploration
 -- What day of the week is used for each week_date value?
 select distinct(to_char(week_date, 'day')) as weekday
@@ -83,5 +85,66 @@ from cte
 ;
 
 -- What is the percentage of sales by demographic for each year in the dataset?
+
+-- output -- year | demographic | sales %
+-- sales % = sales / total_yearly_sales
+
+-- (1) cte: sales per year/demographic + sum(sales) as total_sales
+-- (2) outer: year, percentage calculations 
+
+with cte as (
+select	calendar_year,
+		demographic,
+        sum(sales) as demographic_sales
+from clean_weekly_sales
+group by 1,2
+  ),
+cte2 as (
+select	*,
+  		sum(demographic_sales) over (partition by calendar_year) as yearly_sales
+from cte
+)
+select	calendar_year,
+		demographic,
+		round((100*demographic_sales/yearly_sales),2) as sales_percentage
+from cte2
+order by calendar_year, demographic
+;
+
 -- Which age_band and demographic values contribute the most to Retail sales?
+
+-- output -- age_band | demographic | retail_sales_contribution
+
+-- highest retail sales: platform = 'Retail' & sum(sales) group by age_band & demographic
+-- outer: max(sales)
+
+with cte as (
+select	age_band, 
+		demographic,
+        sum(sales) as total_sales
+from clean_weekly_sales
+    where platform = 'Retail'
+group by age_band, demographic
+)
+
+select age_band,
+		demographic,
+        max(total_sales) as highest_sales
+from cte
+group by 1,2
+order by 3 desc
+limit 1
+;
+
+select	age_band,
+		demographic,
+        round(100.0*sum(sales) / 
+        (select sum(sales) from clean_weekly_sales where platform = 'Retail'),2)
+        as retail_sales_contribution
+from clean_weekly_sales
+where platform = 'Retail'
+group by age_band, demographic
+order by retail_sales_contribution desc
+;
+
 -- Can we use the avg_transaction column to find the average transaction size for each year for Retail vs Shopify? If not - how would you calculate it instead?
